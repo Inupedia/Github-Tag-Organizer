@@ -132,7 +132,7 @@ const listsToCreate = [
         for (const [subcategory, data] of Object.entries(
           subcategories as any
         )) {
-          if (subcategory !== "General" && (data as any).repos.length > 0) {
+          if (subcategory !== "通用" && (data as any).repos.length > 0) {
             const repoUrls = (data as any).repos.map(
               ({ repo }: any) => repo.html_url
             );
@@ -191,7 +191,7 @@ createAllLists();
 
         categoryRepos.forEach(({ repo }: any, index: number) => {
           instructions += `${index + 1}. [${repo.name}](${repo.html_url}) - ${
-            repo.description || "No description"
+            repo.description || "无描述"
           }\n`;
         });
 
@@ -209,7 +209,7 @@ createAllLists();
         for (const [subcategory, data] of Object.entries(
           subcategories as any
         )) {
-          if (subcategory !== "General" && (data as any).repos.length > 0) {
+          if (subcategory !== "通用" && (data as any).repos.length > 0) {
             instructions += `### 创建 "⭐ ${category} - ${subcategory}" List\n\n`;
             instructions += `**描述：** Starred repositories in ${category} > ${subcategory} (${
               (data as any).repos.length
@@ -219,7 +219,7 @@ createAllLists();
             (data as any).repos.forEach(({ repo }: any, index: number) => {
               instructions += `${index + 1}. [${repo.name}](${
                 repo.html_url
-              }) - ${repo.description || "No description"}\n`;
+              }) - ${repo.description || "无描述"}\n`;
             });
 
             instructions += `\n**操作步骤：**\n`;
@@ -258,7 +258,7 @@ createAllLists();
   }
 
   async generateCSVForImport(organizedRepos: any): Promise<void> {
-    let csv = "List Name,Repository URL,Description\n";
+    let csv = "列表名称,仓库 URL,描述\n";
 
     for (const [category, subcategories] of Object.entries(organizedRepos)) {
       const categoryRepos = Object.values(subcategories as any).flatMap(
@@ -267,7 +267,7 @@ createAllLists();
       if (categoryRepos.length > 0) {
         categoryRepos.forEach(({ repo }: any) => {
           csv += `"⭐ ${category}","${repo.html_url}","${
-            repo.description || "No description"
+            repo.description || "无描述"
           }"\n`;
         });
       }
@@ -278,10 +278,10 @@ createAllLists();
         for (const [subcategory, data] of Object.entries(
           subcategories as any
         )) {
-          if (subcategory !== "General" && (data as any).repos.length > 0) {
+          if (subcategory !== "通用" && (data as any).repos.length > 0) {
             (data as any).repos.forEach(({ repo }: any) => {
               csv += `"⭐ ${category} - ${subcategory}","${repo.html_url}","${
-                repo.description || "No description"
+                repo.description || "无描述"
               }"\n`;
             });
           }

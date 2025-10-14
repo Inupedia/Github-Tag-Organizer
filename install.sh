@@ -1,52 +1,52 @@
 #!/bin/bash
 
-# GitHub Tag Organizer - Installation Script
-# This script installs dependencies and builds the project
+# GitHub 标签整理器 - 安装脚本
+# 此脚本安装依赖项并构建项目
 
 set -e
 
-echo "🚀 Installing GitHub Tag Organizer..."
+echo "🚀 正在安装 GitHub 标签整理器..."
 
-# Check if Node.js is installed
+# 检查是否安装了 Node.js
 if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed. Please install Node.js 16+ first."
-    echo "   Visit: https://nodejs.org/"
+    echo "❌ 未安装 Node.js。请先安装 Node.js 16+ 版本。"
+    echo "   访问：https://nodejs.org/"
     exit 1
 fi
 
-# Check Node.js version
+# 检查 Node.js 版本
 NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
 if [ "$NODE_VERSION" -lt 16 ]; then
-    echo "❌ Node.js version 16+ is required. Current version: $(node -v)"
+    echo "❌ 需要 Node.js 16+ 版本。当前版本：$(node -v)"
     exit 1
 fi
 
-echo "✅ Node.js $(node -v) detected"
+echo "✅ 检测到 Node.js $(node -v)"
 
-# Install dependencies
-echo "📦 Installing dependencies..."
+# 安装依赖项
+echo "📦 正在安装依赖项..."
 npm install
 
-# Build the project
-echo "🔨 Building project..."
+# 构建项目
+echo "🔨 正在构建项目..."
 npm run build
 
-# Check if .env file exists
+# 检查 .env 文件是否存在
 if [ ! -f ".env" ]; then
-    echo "⚠️  .env file not found. Creating from template..."
+    echo "⚠️  未找到 .env 文件。正在从模板创建..."
     cp env.example .env
-    echo "📝 Please edit .env file with your configuration:"
-    echo "   - GITHUB_TOKEN: Your GitHub Personal Access Token"
-    echo "   - LLM_API_URL: Your local LLM API endpoint"
-    echo "   - LLM_MODEL: Your LLM model name"
+    echo "📝 请编辑 .env 文件配置您的设置："
+    echo "   - GITHUB_TOKEN: 您的 GitHub 个人访问令牌"
+    echo "   - LLM_API_URL: 您的本地 LLM API 端点"
+    echo "   - LLM_MODEL: 您的 LLM 模型名称"
 fi
 
 echo ""
-echo "🎉 Installation completed successfully!"
+echo "🎉 安装成功完成！"
 echo ""
-echo "📋 Next steps:"
-echo "   1. Edit .env file with your configuration"
-echo "   2. Run: npm run dev"
-echo "   3. Check the generated files in the project directory"
+echo "📋 下一步："
+echo "   1. 编辑 .env 文件配置您的设置"
+echo "   2. 运行：npm run dev"
+echo "   3. 检查项目目录中生成的文件"
 echo ""
-echo "📖 For more information, see README.md"
+echo "📖 更多信息，请查看 README.md"

@@ -14,12 +14,12 @@ export class LLMClient {
     repos: GitHubRepo[]
   ): Promise<ClassificationResult[]> {
     try {
-      // Process repositories in batches to avoid timeout
-      const batchSize = 20; // Process 20 repos at a time
+      // 分批处理仓库以避免超时
+      const batchSize = 20; // 每次处理 20 个仓库
       const allClassifications: ClassificationResult[] = [];
 
       console.log(
-        `Processing ${repos.length} repositories in batches of ${batchSize}...`
+        `正在分批处理 ${repos.length} 个仓库，每批 ${batchSize} 个...`
       );
 
       for (let i = 0; i < repos.length; i += batchSize) {
@@ -28,13 +28,13 @@ export class LLMClient {
         const totalBatches = Math.ceil(repos.length / batchSize);
 
         console.log(
-          `Processing batch ${batchNumber}/${totalBatches} (${batch.length} repositories)...`
+          `正在处理第 ${batchNumber}/${totalBatches} 批 (${batch.length} 个仓库)...`
         );
 
         const batchClassifications = await this.classifyBatch(batch);
         allClassifications.push(...batchClassifications);
 
-        // Add a small delay between batches to avoid overwhelming the LLM
+        // 在批次之间添加小延迟以避免使 LLM 过载
         if (i + batchSize < repos.length) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
@@ -42,7 +42,7 @@ export class LLMClient {
 
       return allClassifications;
     } catch (error) {
-      console.error("Error calling LLM:", error);
+      console.error("调用 LLM 时出错：", error);
       throw error;
     }
   }
@@ -82,15 +82,14 @@ export class LLMClient {
       const content = response.data.choices[0].message.content;
       return this.parseClassificationResponse(content, repos);
     } catch (error) {
-      console.error(`Error processing batch:`, error);
-      // Return fallback classifications for this batch
+      console.error(`处理批次时出错：`, error);
+      // 为此批次返回备用分类
       return repos.map((repo) => ({
         category: this.getFallbackCategory(repo),
-        tags:
-          repo.topics.length > 0 ? repo.topics : [repo.language || "Unknown"],
-        reason: `Fallback classification based on language: ${
-          repo.language || "Unknown"
-        } and topics: ${repo.topics.join(", ") || "None"}`,
+        tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
+        reason: `基于语言的备用分类：${repo.language || "未知"} 和主题：${
+          repo.topics.join(", ") || "无"
+        }`,
       }));
     }
   }
@@ -107,12 +106,12 @@ export class LLMClient {
 
     return `Please analyze the following GitHub repositories and classify them into meaningful categories. For each repository, provide:
 
-1. A main category (e.g., "Web Development", "Machine Learning", "DevOps", "Mobile Development", "Data Science", "Tools & Utilities", "Libraries & Frameworks", "Learning Resources", etc.)
-2. An optional subcategory for more specific classification
-3. Relevant tags (array of strings)
-4. A brief reason for the classification
+1. 一个主类别（例如："Web 开发"、"机器学习"、"DevOps"、"移动开发"、"数据科学"、"工具与实用程序"、"库与框架"、"学习资源"等）
+2. 一个可选的子类别用于更具体的分类
+3. 相关标签（字符串数组）
+4. 分类的简要原因
 
-Return the response as a JSON array where each object has this structure:
+以 JSON 数组形式返回响应，其中每个对象具有以下结构：
 {
   "category": "string",
   "subcategory": "string (optional)",
@@ -120,10 +119,10 @@ Return the response as a JSON array where each object has this structure:
   "reason": "string"
 }
 
-Repositories to classify:
+要分类的仓库：
 ${JSON.stringify(repoData, null, 2)}
 
-Please ensure the JSON is valid and properly formatted.`;
+请确保 JSON 有效且格式正确。`;
   }
 
   private parseClassificationResponse(
@@ -131,40 +130,34 @@ Please ensure the JSON is valid and properly formatted.`;
     repos: GitHubRepo[]
   ): ClassificationResult[] {
     try {
-      // Try to extract JSON from the response
+      // 尝试从响应中提取 JSON
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const jsonStr = jsonMatch[0];
         const parsed = JSON.parse(jsonStr);
 
-        // Ensure we have the right number of classifications
+        // 确保我们有正确数量的分类
         if (Array.isArray(parsed) && parsed.length === repos.length) {
           return parsed;
         }
       }
 
-      // Fallback: create basic classifications
-      console.warn(
-        "Failed to parse LLM response, using fallback classifications"
-      );
+      // 备用方案：创建基本分类
+      console.warn("解析 LLM 响应失败，使用备用分类");
       return repos.map((repo) => ({
         category: this.getFallbackCategory(repo),
-        tags:
-          repo.topics.length > 0 ? repo.topics : [repo.language || "Unknown"],
-        reason: `Classified based on language: ${
-          repo.language || "Unknown"
-        } and topics: ${repo.topics.join(", ") || "None"}`,
+        tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
+        reason: `基于语言分类：${repo.language || "未知"} 和主题：${
+          repo.topics.join(", ") || "无"
+        }`,
       }));
     } catch (error) {
-      console.error("Error parsing LLM response:", error);
-      // Return fallback classifications
+      console.error("解析 LLM 响应时出错：", error);
+      // 返回备用分类
       return repos.map((repo) => ({
         category: this.getFallbackCategory(repo),
-        tags:
-          repo.topics.length > 0 ? repo.topics : [repo.language || "Unknown"],
-        reason: `Fallback classification based on language: ${
-          repo.language || "Unknown"
-        }`,
+        tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
+        reason: `基于语言的备用分类：${repo.language || "未知"}`,
       }));
     }
   }
@@ -180,7 +173,7 @@ Please ensure the JSON is valid and properly formatted.`;
       language === "html" ||
       language === "css"
     ) {
-      return "Web Development";
+      return "Web 开发";
     }
     if (
       language === "python" &&
@@ -188,7 +181,7 @@ Please ensure the JSON is valid and properly formatted.`;
         description.includes("ai") ||
         description.includes("data"))
     ) {
-      return "Machine Learning";
+      return "机器学习";
     }
     if (
       language === "python" &&
@@ -197,7 +190,7 @@ Please ensure the JSON is valid and properly formatted.`;
         description.includes("django") ||
         description.includes("flask"))
     ) {
-      return "Web Development";
+      return "Web 开发";
     }
     if (
       language === "java" ||
@@ -205,7 +198,7 @@ Please ensure the JSON is valid and properly formatted.`;
       language === "swift" ||
       language === "dart"
     ) {
-      return "Mobile Development";
+      return "移动开发";
     }
     if (
       language === "go" ||
@@ -213,7 +206,7 @@ Please ensure the JSON is valid and properly formatted.`;
       language === "c++" ||
       language === "c"
     ) {
-      return "System Programming";
+      return "系统编程";
     }
     if (
       topics.includes("docker") ||
@@ -227,9 +220,9 @@ Please ensure the JSON is valid and properly formatted.`;
       topics.includes("tutorial") ||
       topics.includes("course")
     ) {
-      return "Learning Resources";
+      return "学习资源";
     }
 
-    return "Tools & Utilities";
+    return "工具与实用程序";
   }
 }

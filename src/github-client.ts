@@ -33,7 +33,7 @@ export class GitHubClient {
             break;
           }
 
-          // Transform the response to match our interface
+          // 转换响应以匹配我们的接口
           const transformedRepos = response.data.map((repo: any) => ({
             id: repo.id,
             name: repo.name,
@@ -51,7 +51,7 @@ export class GitHubClient {
           repos.push(...transformedRepos);
           page++;
 
-          // GitHub API has a limit, break if we've reached it
+          // GitHub API 有限制，如果达到限制则中断
           if (response.data.length < perPage) {
             break;
           }
@@ -61,13 +61,13 @@ export class GitHubClient {
       } catch (error: any) {
         retryCount++;
         console.error(
-          `Error fetching starred repos (attempt ${retryCount}/${maxRetries}):`,
+          `获取星标仓库时出错（尝试 ${retryCount}/${maxRetries}）：`,
           error.message
         );
 
         if (retryCount < maxRetries) {
-          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-          console.log(`Retrying in ${delay}ms...`);
+          const delay = Math.pow(2, retryCount) * 1000; // 指数退避
+          console.log(`${delay}ms 后重试...`);
           await new Promise((resolve) => setTimeout(resolve, delay));
         } else {
           throw error;
@@ -75,7 +75,7 @@ export class GitHubClient {
       }
     }
 
-    throw new Error("Failed to fetch starred repos after all retries");
+    throw new Error("所有重试后仍无法获取星标仓库");
   }
 
   async createList(
@@ -84,15 +84,15 @@ export class GitHubClient {
     isPublic: boolean = true
   ): Promise<GitHubList> {
     try {
-      // Since GitHub Lists API is not available, we'll create a simple text file
-      // that can be used as a reference for manual list creation
-      const listId = Date.now(); // Use timestamp as ID
+      // 由于 GitHub Lists API 不可用，我们将创建一个简单的文本文件
+      // 可以用作手动创建列表的参考
+      const listId = Date.now(); // 使用时间戳作为 ID
       const createdAt = new Date().toISOString();
 
-      console.log(`📝 Created list reference: ${name}`);
-      console.log(`   Description: ${description}`);
-      console.log(`   Public: ${isPublic}`);
-      console.log(`   ID: ${listId}`);
+      console.log(`📝 创建列表引用：${name}`);
+      console.log(`   描述：${description}`);
+      console.log(`   公开：${isPublic}`);
+      console.log(`   ID：${listId}`);
 
       return {
         id: listId,
@@ -103,19 +103,19 @@ export class GitHubClient {
         updated_at: createdAt,
       };
     } catch (error) {
-      console.error("Error creating list:", error);
+      console.error("创建列表时出错：", error);
       throw error;
     }
   }
 
   async addReposToList(listId: string, repoIds: number[]): Promise<void> {
     try {
-      // Note: GitHub doesn't have a direct API for adding repos to lists
-      // This is a placeholder for future implementation
-      // You might need to use GitHub's GraphQL API or create a custom solution
-      console.log(`Would add ${repoIds.length} repos to list ${listId}`);
+      // 注意：GitHub 没有直接添加仓库到列表的 API
+      // 这是未来实现的占位符
+      // 您可能需要使用 GitHub 的 GraphQL API 或创建自定义解决方案
+      console.log(`将添加 ${repoIds.length} 个仓库到列表 ${listId}`);
     } catch (error) {
-      console.error("Error adding repos to list:", error);
+      console.error("添加仓库到列表时出错：", error);
       throw error;
     }
   }
@@ -125,7 +125,7 @@ export class GitHubClient {
       const response = await this.octokit.rest.users.getAuthenticated();
       return response.data.login;
     } catch (error) {
-      console.error("Error getting current user:", error);
+      console.error("获取当前用户时出错：", error);
       throw error;
     }
   }
