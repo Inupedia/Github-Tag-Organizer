@@ -1,8 +1,16 @@
-import { GitHubRepo, ClassificationResult, GitHubList } from "./types";
+import {
+  GitHubRepo,
+  ClassificationResult,
+  GitHubList,
+  GitHubStarList,
+  GitHubStarListAssignment,
+  GitHubStarListSyncSummary,
+} from "./types";
 import { GitHubClient } from "./github-client";
 import { LLMClient } from "./llm-client";
 import { FileBasedListsClient } from "./file-based-lists";
 import { GitHubListsManager } from "./github-lists-manager";
+import { GitHubStarListsClient } from "./github-star-lists-client";
 
 export interface OrganizedRepos {
   [category: string]: {
@@ -33,18 +41,24 @@ export class RepoOrganizer {
     this.githubListsManager = githubListsManager;
   }
 
-  async organizeRepositories(repos: GitHubRepo[]): Promise<OrganizedRepos> {
+  async organizeRepositories(
+    repos: GitHubRepo[],
+    existingStarLists: GitHubStarList[] = []
+  ): Promise<OrganizedRepos> {
     console.log(`正在分类 ${repos.length} 个仓库...`);
 
     // 使用 LLM 分类仓库
-    const classifications = await this.llmClient.classifyRepositories(repos);
+    const classifications = await this.llmClient.classifyRepositories(
+      repos,
+      existingStarLists
+    );
 
     // 按类别和子类别整理仓库
     const organized: OrganizedRepos = {};
 
     repos.forEach((repo, index) => {
       const classification = classifications[index];
-      const category = classification.category;
+      const category = classification.listName || classification.category;
       const subcategory = classification.subcategory || "通用";
 
       if (!organized[category]) {
@@ -62,6 +76,47 @@ export class RepoOrganizer {
     });
 
     return organized;
+  }
+
+  buildGitHubStarListAssignments(
+    organizedRepos: OrganizedRepos
+  ): GitHubStarListAssignment[] {
+    const assignments: GitHubStarListAssignment[] = [];
+
+    for (const [category, subcategories] of Object.entries(organizedRepos)) {
+      for (const data of Object.values(subcategories)) {
+        data.repos.forEach(({ repo, classification }) => {
+          assignments.push({
+            repo,
+            classification,
+            listName: classification.listName || category,
+          });
+        });
+      }
+    }
+
+    return assignments;
+  }
+
+  async syncGitHubStarLists(
+    organizedRepos: OrganizedRepos,
+    starListsClient: GitHubStarListsClient,
+    options: { dryRun?: boolean } = {}
+  ): Promise<GitHubStarListSyncSummary> {
+    const assignments = this.buildGitHubStarListAssignments(organizedRepos);
+    if (assignments.length === 0) {
+      return {
+        existingLists: [],
+        createdLists: [],
+        assignedRepos: [],
+        failedRepos: [],
+        dryRun: options.dryRun ?? false,
+      };
+    }
+
+    return starListsClient.syncAssignments(assignments, assignments[0].repo, {
+      dryRun: options.dryRun,
+    });
   }
 
   async createGitHubLists(

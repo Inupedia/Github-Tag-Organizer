@@ -94,6 +94,24 @@ GITHUB_TOKEN=ghp_your_token_here
 | `read:user` | 获取当前用户信息 | ✅ 必需 |
 | `gist` | 创建 Collections 作为 Lists 替代 | ❌ 可选 |
 
+### 自动同步 GitHub Star Lists
+
+GitHub Personal Access Token 只能读取 starred 仓库，GitHub 目前没有官方 API 可用于创建或修改 Star Lists。本项目的全自动 Lists 同步需要额外配置浏览器登录会话 cookie：
+
+```env
+SYNC_GITHUB_LISTS=true
+GITHUB_SESSION_COOKIES=_octo=...; user_session=...; logged_in=yes; ...
+```
+
+获取方式：
+
+1. 登录 github.com
+2. 打开浏览器开发者工具 → Network
+3. 刷新任意 GitHub 页面
+4. 选中一个 github.com 请求，在 Request Headers 中复制完整 `Cookie` 值
+
+首次运行建议设置 `GITHUB_LISTS_DRY_RUN=true` 预览 LLM 分类和即将创建/更新的 Lists。
+
 ### 安全建议
 
 1. **最小权限原则**：只选择必需的权限
@@ -116,6 +134,10 @@ GITHUB_TOKEN=ghp_your_token_here
 #### 3. "API rate limit exceeded"
 - **原因**：API 调用次数超限
 - **解决**：等待重置或使用更少的仓库数量
+
+#### 4. "无法找到 GitHub CSRF token"
+- **原因**：`GITHUB_SESSION_COOKIES` 未配置、已过期，或不是从已登录的 github.com 请求复制
+- **解决**：重新从浏览器复制完整 Cookie，并确认包含 `user_session` 和 `logged_in=yes`
 
 ### 验证 Token 权限
 

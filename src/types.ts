@@ -17,6 +17,7 @@ export interface ClassificationResult {
   subcategory?: string;
   tags: string[];
   reason: string;
+  listName?: string;
 }
 
 export interface GitHubList {
@@ -30,4 +31,25 @@ export interface GitHubList {
 
 export interface LLMResponse {
   classifications: ClassificationResult[];
+}
+
+export interface GitHubStarList {
+  id: string;
+  name: string;
+  description?: string;
+  slug?: string;
+}
+
+export interface GitHubStarListAssignment {
+  repo: GitHubRepo;
+  listName: string;
+  classification: ClassificationResult;
+}
+
+export interface GitHubStarListSyncSummary {
+  existingLists: GitHubStarList[];
+  createdLists: GitHubStarList[];
+  assignedRepos: GitHubStarListAssignment[];
+  failedRepos: GitHubStarListAssignment[];
+  dryRun: boolean;
 }
