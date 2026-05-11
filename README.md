@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![GitHub stars](https://img.shields.io/github/stars/Inupedia/Github-Tag-Organizer?style=social)](https://github.com/Inupedia/Github-Tag-Organizer/stargazers)
 
 > 一个基于 TypeScript 的智能工具，使用大语言模型自动分类和整理你的 GitHub starred 仓库，并可自动创建/更新 GitHub Star Lists。
 
@@ -37,8 +38,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/Inupedia/github-tag-organizer.git
-cd github-tag-organizer
+git clone https://github.com/Inupedia/Github-Tag-Organizer.git
+cd Github-Tag-Organizer
 
 # 安装依赖
 npm install
@@ -198,6 +199,20 @@ npm run build
 # 清理构建文件
 npm run clean
 ```
+
+### 完善 GitHub 仓库主页
+
+仓库主页的 description、homepage 和 topics 可以通过脚本统一更新：
+
+```bash
+GH_ADMIN_TOKEN=your_admin_token npm run repo:metadata
+```
+
+推荐展示信息：
+
+- **Description**: `LLM-powered GitHub Star Lists organizer that automatically classifies starred repositories, creates missing lists, and syncs assignments.`
+- **Homepage**: `https://github.com/Inupedia/Github-Tag-Organizer#readme`
+- **Topics**: `github`, `github-stars`, `star-lists`, `llm`, `ai`, `typescript`, `automation`, `repository-management`, `starred-repos`, `github-api`, `ollama`, `openai`, `productivity`, `developer-tools`
 
 ### 代码结构
 
