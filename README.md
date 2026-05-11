@@ -4,14 +4,14 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
 
-> 一个基于 TypeScript 的智能工具，使用大语言模型自动分类和整理你的 GitHub starred 仓库，并生成 GitHub Lists 创建工具。
+> 一个基于 TypeScript 的智能工具，使用大语言模型自动分类和整理你的 GitHub starred 仓库，并可自动创建/更新 GitHub Star Lists。
 
 ## ✨ 功能特性
 
 - 🔍 **自动获取** - 通过 GitHub API 获取所有 starred 仓库
 - 🤖 **智能分类** - 使用本地 LLM 进行智能分类和标签化
 - 📝 **多种输出** - 生成文件系统列表、自动化脚本、手动指南
-- 🎯 **GitHub Lists** - 提供工具在 GitHub 上创建实际的 Lists
+- 🎯 **GitHub Lists 自动同步** - 自动读取现有 Lists，缺失时创建，并把仓库加入对应分类
 - 📊 **详细报告** - 生成完整的分类分析报告
 - 🏷️ **多级分类** - 支持主分类和子分类的层次结构
 - ⚡ **批量处理** - 支持大量仓库的批量处理
@@ -59,6 +59,11 @@ npm run build
    
    # Maximum repositories to process (0 = all)
    MAX_REPOS=50
+
+   # Automatically sync GitHub Star Lists (requires browser session cookies)
+   SYNC_GITHUB_LISTS=true
+   GITHUB_SESSION_COOKIES=_octo=...; user_session=...; logged_in=yes; ...
+   GITHUB_LISTS_DRY_RUN=false
    ```
 
 3. **获取 GitHub Token**：
@@ -96,11 +101,11 @@ npm test
    - 手动指南：`github-lists-manual-instructions.md`
    - 详细报告：`organization-report.md`
 
-3. **创建 GitHub Lists**：
-   - 打开 https://github.com/yourusername?tab=stars
-   - 按 F12 打开开发者工具
-   - 复制 `create-github-lists.js` 内容到控制台
-   - 按回车执行自动化脚本
+3. **同步 GitHub Lists**：
+   - 配置 `GITHUB_SESSION_COOKIES` 后，脚本会自动读取现有 Star Lists
+   - LLM 会优先复用已有分类；如果没有合适分类，会自动创建新的 List
+   - 每个 starred 仓库会被自动加入对应 GitHub Star List
+   - 未配置 cookie 时，仍会生成本地文件和手动指南作为降级输出
 
 ### 高级配置
 
@@ -120,6 +125,33 @@ MAX_REPOS=100 npm run dev
 # 使用不同的 LLM 服务
 LLM_API_URL=http://your-llm-server:port
 LLM_MODEL=your-model-name
+```
+
+#### 自动同步 GitHub Star Lists
+
+GitHub 目前没有官方 Star Lists 写入 API。为了实现全自动创建和归类，本工具会使用你浏览器中的 GitHub 登录会话调用 GitHub 网页端点。
+
+1. 登录 [github.com](https://github.com)
+2. 打开开发者工具（F12）→ Network
+3. 刷新任意 GitHub 页面，选中一个 `github.com` 请求
+4. 在 Request Headers 中复制完整 `Cookie` 值
+5. 写入 `.env`：
+
+```env
+SYNC_GITHUB_LISTS=true
+GITHUB_SESSION_COOKIES=_octo=...; user_session=...; logged_in=yes; ...
+```
+
+建议首次运行使用 dry-run 预览：
+
+```bash
+GITHUB_LISTS_DRY_RUN=true npm run dev
+```
+
+确认分类结果后再执行实际同步：
+
+```bash
+GITHUB_LISTS_DRY_RUN=false npm run dev
 ```
 
 ## 📁 项目结构
@@ -162,10 +194,11 @@ npm run clean
 ### 代码结构
 
 - **GitHubClient**: 处理 GitHub API 交互
-- **LLMClient**: 处理本地 LLM 通信
+- **LLMClient**: 处理本地 LLM 通信，并根据现有 GitHub Star Lists 输出目标分类
 - **RepoOrganizer**: 核心组织逻辑
 - **FileBasedListsClient**: 生成文件系统列表
 - **GitHubListsManager**: 生成 GitHub Lists 工具
+- **GitHubStarListsClient**: 自动创建 GitHub Star Lists 并同步仓库归类
 
 ## 📊 输出示例
 

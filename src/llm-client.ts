@@ -1,5 +1,10 @@
 import axios from "axios";
-import { GitHubRepo, ClassificationResult, LLMResponse } from "./types";
+import {
+  GitHubRepo,
+  ClassificationResult,
+  GitHubStarList,
+  LLMResponse,
+} from "./types";
 
 export class LLMClient {
   private apiUrl: string;
@@ -11,7 +16,8 @@ export class LLMClient {
   }
 
   async classifyRepositories(
-    repos: GitHubRepo[]
+    repos: GitHubRepo[],
+    existingLists: GitHubStarList[] = []
   ): Promise<ClassificationResult[]> {
     try {
       // 分批处理仓库以避免超时
@@ -31,7 +37,10 @@ export class LLMClient {
           `正在处理第 ${batchNumber}/${totalBatches} 批 (${batch.length} 个仓库)...`
         );
 
-        const batchClassifications = await this.classifyBatch(batch);
+        const batchClassifications = await this.classifyBatch(
+          batch,
+          existingLists
+        );
         allClassifications.push(...batchClassifications);
 
         // 在批次之间添加小延迟以避免使 LLM 过载
@@ -48,10 +57,11 @@ export class LLMClient {
   }
 
   private async classifyBatch(
-    repos: GitHubRepo[]
+    repos: GitHubRepo[],
+    existingLists: GitHubStarList[]
   ): Promise<ClassificationResult[]> {
     try {
-      const prompt = this.createClassificationPrompt(repos);
+      const prompt = this.createClassificationPrompt(repos, existingLists);
 
       const response = await axios.post(
         `${this.apiUrl}/v1/chat/completions`,
@@ -61,7 +71,7 @@ export class LLMClient {
             {
               role: "system",
               content:
-                "You are an expert at categorizing GitHub repositories. Analyze the provided repositories and classify them into meaningful categories with subcategories and tags. Return your response as valid JSON.",
+                "You are an expert GitHub Star Lists organizer. Classify repositories into practical GitHub Star Lists, prefer reusing existing lists, and return only valid JSON.",
             },
             {
               role: "user",
@@ -80,21 +90,20 @@ export class LLMClient {
       );
 
       const content = response.data.choices[0].message.content;
-      return this.parseClassificationResponse(content, repos);
+      return this.parseClassificationResponse(content, repos, existingLists);
     } catch (error) {
       console.error(`处理批次时出错：`, error);
       // 为此批次返回备用分类
-      return repos.map((repo) => ({
-        category: this.getFallbackCategory(repo),
-        tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
-        reason: `基于语言的备用分类：${repo.language || "未知"} 和主题：${
-          repo.topics.join(", ") || "无"
-        }`,
-      }));
+      return repos.map((repo) =>
+        this.createFallbackClassification(repo, existingLists)
+      );
     }
   }
 
-  private createClassificationPrompt(repos: GitHubRepo[]): string {
+  private createClassificationPrompt(
+    repos: GitHubRepo[],
+    existingLists: GitHubStarList[]
+  ): string {
     const repoData = repos.map((repo) => ({
       name: repo.name,
       full_name: repo.full_name,
@@ -104,15 +113,36 @@ export class LLMClient {
       stars: repo.stargazers_count,
     }));
 
-    return `Please analyze the following GitHub repositories and classify them into meaningful categories. For each repository, provide:
+    const existingListNames =
+      existingLists.length > 0
+        ? existingLists.map((list) => `- ${list.name}`).join("\n")
+        : "(none yet)";
+
+    return `Please analyze the following GitHub repositories and classify them into meaningful GitHub Star Lists.
+
+Existing GitHub Star Lists:
+${existingListNames}
+
+Rules:
+1. Prefer reusing an existing GitHub Star List whenever it is a reasonable fit.
+2. If no existing list fits, create a concise new list name in "listName".
+3. Keep list names broad and useful. Avoid creating overly specific lists.
+4. GitHub has a hard limit on Star Lists, so keep the total set small.
+5. Each repository must be assigned to exactly one "listName".
+6. Return only valid JSON. Do not include markdown code fences.
+
+For each repository, provide:
 
 1. 一个主类别（例如："Web 开发"、"机器学习"、"DevOps"、"移动开发"、"数据科学"、"工具与实用程序"、"库与框架"、"学习资源"等）
 2. 一个可选的子类别用于更具体的分类
 3. 相关标签（字符串数组）
 4. 分类的简要原因
+5. 一个 GitHub Star List 名称（listName），优先使用现有 List，不存在时给出需要自动创建的新名称
 
 以 JSON 数组形式返回响应，其中每个对象具有以下结构：
 {
+  "repo": "owner/name",
+  "listName": "string",
   "category": "string",
   "subcategory": "string (optional)",
   "tags": ["string1", "string2", ...],
@@ -127,7 +157,8 @@ ${JSON.stringify(repoData, null, 2)}
 
   private parseClassificationResponse(
     content: string,
-    repos: GitHubRepo[]
+    repos: GitHubRepo[],
+    existingLists: GitHubStarList[]
   ): ClassificationResult[] {
     try {
       // 尝试从响应中提取 JSON
@@ -136,30 +167,119 @@ ${JSON.stringify(repoData, null, 2)}
         const jsonStr = jsonMatch[0];
         const parsed = JSON.parse(jsonStr);
 
-        // 确保我们有正确数量的分类
-        if (Array.isArray(parsed) && parsed.length === repos.length) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          return this.normalizeClassifications(parsed, repos, existingLists);
         }
       }
 
       // 备用方案：创建基本分类
       console.warn("解析 LLM 响应失败，使用备用分类");
-      return repos.map((repo) => ({
-        category: this.getFallbackCategory(repo),
-        tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
-        reason: `基于语言分类：${repo.language || "未知"} 和主题：${
-          repo.topics.join(", ") || "无"
-        }`,
-      }));
+      return repos.map((repo) =>
+        this.createFallbackClassification(repo, existingLists)
+      );
     } catch (error) {
       console.error("解析 LLM 响应时出错：", error);
       // 返回备用分类
-      return repos.map((repo) => ({
-        category: this.getFallbackCategory(repo),
-        tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
-        reason: `基于语言的备用分类：${repo.language || "未知"}`,
-      }));
+      return repos.map((repo) =>
+        this.createFallbackClassification(repo, existingLists)
+      );
     }
+  }
+
+  private normalizeClassifications(
+    parsed: any[],
+    repos: GitHubRepo[],
+    existingLists: GitHubStarList[]
+  ): ClassificationResult[] {
+    const byRepo = new Map<string, any>();
+    parsed.forEach((item, index) => {
+      if (item?.repo) {
+        byRepo.set(String(item.repo), item);
+      } else if (repos[index]) {
+        byRepo.set(repos[index].full_name, item);
+      }
+    });
+
+    return repos.map((repo) => {
+      const raw = byRepo.get(repo.full_name);
+      if (!raw) {
+        return this.createFallbackClassification(repo, existingLists);
+      }
+
+      const category = this.sanitizeText(raw.category) || this.getFallbackCategory(repo);
+      const listName =
+        this.sanitizeListName(raw.listName || raw.list || raw.githubList) ||
+        this.findMatchingExistingList(category, existingLists) ||
+        category;
+
+      return {
+        category,
+        subcategory: this.sanitizeText(raw.subcategory),
+        tags: this.normalizeTags(raw.tags, repo),
+        reason:
+          this.sanitizeText(raw.reason) ||
+          `LLM 将该仓库归类到 ${listName}`,
+        listName,
+      };
+    });
+  }
+
+  private createFallbackClassification(
+    repo: GitHubRepo,
+    existingLists: GitHubStarList[]
+  ): ClassificationResult {
+    const category = this.getFallbackCategory(repo);
+    const listName =
+      this.findMatchingExistingList(category, existingLists) || category;
+
+    return {
+      category,
+      listName,
+      tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
+      reason: `基于语言和主题的备用分类：${repo.language || "未知"} / ${
+        repo.topics.join(", ") || "无"
+      }`,
+    };
+  }
+
+  private normalizeTags(rawTags: any, repo: GitHubRepo): string[] {
+    if (Array.isArray(rawTags)) {
+      const tags = rawTags
+        .map((tag) => this.sanitizeText(tag))
+        .filter((tag) => tag.length > 0)
+        .slice(0, 8);
+
+      if (tags.length > 0) {
+        return tags;
+      }
+    }
+
+    return repo.topics.length > 0 ? repo.topics : [repo.language || "未知"];
+  }
+
+  private findMatchingExistingList(
+    category: string,
+    existingLists: GitHubStarList[]
+  ): string | undefined {
+    const normalizedCategory = this.normalizeForCompare(category);
+    return existingLists.find(
+      (list) => this.normalizeForCompare(list.name) === normalizedCategory
+    )?.name;
+  }
+
+  private sanitizeListName(value: any): string {
+    return this.sanitizeText(value)
+      .replace(/\s+/g, " ")
+      .slice(0, 80)
+      .trim();
+  }
+
+  private sanitizeText(value: any): string {
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  private normalizeForCompare(value: string): string {
+    return value.toLowerCase().replace(/\s+/g, " ").trim();
   }
 
   private getFallbackCategory(repo: GitHubRepo): string {
