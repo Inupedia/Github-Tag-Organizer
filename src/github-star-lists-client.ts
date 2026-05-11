@@ -4,6 +4,7 @@ import {
   GitHubStarListAssignment,
   GitHubStarListSyncSummary,
 } from "./types";
+import { AppLanguage, localize } from "./i18n";
 
 const BROWSER_HEADERS = {
   "User-Agent":
@@ -25,15 +26,18 @@ export class GitHubStarListsClient {
   private readonly username: string;
   private readonly cookieHeader: string;
   private readonly requestDelayMs: number;
+  private readonly language: AppLanguage;
 
   constructor(
     username: string,
     cookieHeader: string,
-    requestDelayMs: number = 1000
+    requestDelayMs: number = 1000,
+    language: AppLanguage = "zh"
   ) {
     this.username = username;
     this.cookieHeader = cookieHeader;
     this.requestDelayMs = requestDelayMs;
+    this.language = language;
   }
 
   async getLists(sampleRepo: GitHubRepo): Promise<GitHubStarList[]> {
@@ -75,7 +79,10 @@ export class GitHubStarListsClient {
 
     if (![200, 201, 301, 302, 303].includes(response.status)) {
       throw new Error(
-        `创建 GitHub Star List "${name}" 失败：HTTP ${response.status} ${response.statusText}`
+        localize(this.language, {
+          zh: `创建 GitHub Star List "${name}" 失败：HTTP ${response.status} ${response.statusText}`,
+          en: `Failed to create GitHub Star List "${name}": HTTP ${response.status} ${response.statusText}`,
+        })
       );
     }
 
@@ -84,7 +91,12 @@ export class GitHubStarListsClient {
     const lists = await this.getLists(sampleRepo);
     const createdList = lists.find((list) => list.name === name);
     if (!createdList) {
-      console.warn(`已提交创建 "${name}"，但刷新后未能找到该 List`);
+      console.warn(
+        localize(this.language, {
+          zh: `已提交创建 "${name}"，但刷新后未能找到该 List`,
+          en: `Submitted creation for "${name}", but could not find the list after refresh`,
+        })
+      );
       return null;
     }
 
@@ -153,11 +165,21 @@ export class GitHubStarListsClient {
       }
 
       if (dryRun) {
-        console.log(`   [dry-run] 将创建 GitHub Star List：${listName}`);
+        console.log(
+          localize(this.language, {
+            zh: `   [dry-run] 将创建 GitHub Star List：${listName}`,
+            en: `   [dry-run] Would create GitHub Star List: ${listName}`,
+          })
+        );
         continue;
       }
 
-      console.log(`   创建 GitHub Star List：${listName}`);
+      console.log(
+        localize(this.language, {
+          zh: `   创建 GitHub Star List：${listName}`,
+          en: `   Creating GitHub Star List: ${listName}`,
+        })
+      );
       const createdList = await this.createList(
         listName,
         sampleRepo,
@@ -175,14 +197,20 @@ export class GitHubStarListsClient {
       if (!targetList) {
         failedRepos.push(assignment);
         console.warn(
-          `   跳过 ${assignment.repo.full_name}：找不到目标 List "${assignment.listName}"`
+          localize(this.language, {
+            zh: `   跳过 ${assignment.repo.full_name}：找不到目标 List "${assignment.listName}"`,
+            en: `   Skipping ${assignment.repo.full_name}: target list "${assignment.listName}" was not found`,
+          })
         );
         continue;
       }
 
       if (dryRun) {
         console.log(
-          `   [dry-run] 将添加 ${assignment.repo.full_name} -> ${assignment.listName}`
+          localize(this.language, {
+            zh: `   [dry-run] 将添加 ${assignment.repo.full_name} -> ${assignment.listName}`,
+            en: `   [dry-run] Would add ${assignment.repo.full_name} -> ${assignment.listName}`,
+          })
         );
         assignedRepos.push(assignment);
         continue;
@@ -197,7 +225,10 @@ export class GitHubStarListsClient {
       } else {
         failedRepos.push(assignment);
         console.warn(
-          `   ⚠️  ${assignment.repo.full_name} 同步到 "${assignment.listName}" 失败`
+          localize(this.language, {
+            zh: `   ⚠️  ${assignment.repo.full_name} 同步到 "${assignment.listName}" 失败`,
+            en: `   ⚠️  Failed to sync ${assignment.repo.full_name} to "${assignment.listName}"`,
+          })
         );
       }
     }
@@ -226,7 +257,10 @@ export class GitHubStarListsClient {
 
     if (response.status !== 200) {
       throw new Error(
-        `获取 GitHub Star Lists 创建表单失败：HTTP ${response.status} ${response.statusText}`
+        localize(this.language, {
+          zh: `获取 GitHub Star Lists 创建表单失败：HTTP ${response.status} ${response.statusText}`,
+          en: `Failed to fetch GitHub Star Lists creation form: HTTP ${response.status} ${response.statusText}`,
+        })
       );
     }
 
@@ -247,7 +281,10 @@ export class GitHubStarListsClient {
 
     if (response.status !== 200) {
       throw new Error(
-        `获取 ${repo.full_name} 的 Star Lists 状态失败：HTTP ${response.status} ${response.statusText}`
+        localize(this.language, {
+          zh: `获取 ${repo.full_name} 的 Star Lists 状态失败：HTTP ${response.status} ${response.statusText}`,
+          en: `Failed to fetch Star Lists state for ${repo.full_name}: HTTP ${response.status} ${response.statusText}`,
+        })
       );
     }
 
@@ -322,7 +359,10 @@ export class GitHubStarListsClient {
     }
 
     throw new Error(
-      "无法找到 GitHub CSRF token。请检查 GITHUB_SESSION_COOKIES 是否已过期。"
+      localize(this.language, {
+        zh: "无法找到 GitHub CSRF token。请检查 GITHUB_SESSION_COOKIES 是否已过期。",
+        en: "Could not find GitHub CSRF token. Check whether GITHUB_SESSION_COOKIES has expired.",
+      })
     );
   }
 

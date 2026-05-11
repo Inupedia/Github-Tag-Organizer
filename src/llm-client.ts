@@ -5,14 +5,17 @@ import {
   GitHubStarList,
   LLMResponse,
 } from "./types";
+import { AppLanguage, getLocaleText, localize } from "./i18n";
 
 export class LLMClient {
   private apiUrl: string;
   private model: string;
+  private language: AppLanguage;
 
-  constructor(apiUrl: string, model: string) {
+  constructor(apiUrl: string, model: string, language: AppLanguage = "zh") {
     this.apiUrl = apiUrl;
     this.model = model;
+    this.language = language;
   }
 
   async classifyRepositories(
@@ -20,12 +23,14 @@ export class LLMClient {
     existingLists: GitHubStarList[] = []
   ): Promise<ClassificationResult[]> {
     try {
-      // 分批处理仓库以避免超时
       const batchSize = 20; // 每次处理 20 个仓库
       const allClassifications: ClassificationResult[] = [];
 
       console.log(
-        `正在分批处理 ${repos.length} 个仓库，每批 ${batchSize} 个...`
+        localize(this.language, {
+          zh: `正在分批处理 ${repos.length} 个仓库，每批 ${batchSize} 个...`,
+          en: `Processing ${repos.length} repositories in batches of ${batchSize}...`,
+        })
       );
 
       for (let i = 0; i < repos.length; i += batchSize) {
@@ -34,7 +39,10 @@ export class LLMClient {
         const totalBatches = Math.ceil(repos.length / batchSize);
 
         console.log(
-          `正在处理第 ${batchNumber}/${totalBatches} 批 (${batch.length} 个仓库)...`
+          localize(this.language, {
+            zh: `正在处理第 ${batchNumber}/${totalBatches} 批 (${batch.length} 个仓库)...`,
+            en: `Processing batch ${batchNumber}/${totalBatches} (${batch.length} repositories)...`,
+          })
         );
 
         const batchClassifications = await this.classifyBatch(
@@ -51,7 +59,13 @@ export class LLMClient {
 
       return allClassifications;
     } catch (error) {
-      console.error("调用 LLM 时出错：", error);
+      console.error(
+        localize(this.language, {
+          zh: "调用 LLM 时出错：",
+          en: "Error calling LLM:",
+        }),
+        error
+      );
       throw error;
     }
   }
@@ -70,8 +84,7 @@ export class LLMClient {
           messages: [
             {
               role: "system",
-              content:
-                "You are an expert GitHub Star Lists organizer. Classify repositories into practical GitHub Star Lists, prefer reusing existing lists, and return only valid JSON.",
+              content: this.createSystemPrompt(),
             },
             {
               role: "user",
@@ -92,12 +105,24 @@ export class LLMClient {
       const content = response.data.choices[0].message.content;
       return this.parseClassificationResponse(content, repos, existingLists);
     } catch (error) {
-      console.error(`处理批次时出错：`, error);
-      // 为此批次返回备用分类
+      console.error(
+        localize(this.language, {
+          zh: "处理批次时出错：",
+          en: "Error processing batch:",
+        }),
+        error
+      );
       return repos.map((repo) =>
         this.createFallbackClassification(repo, existingLists)
       );
     }
+  }
+
+  private createSystemPrompt(): string {
+    return localize(this.language, {
+      zh: "你是 GitHub Star Lists 整理专家。请将仓库归类到实用的 GitHub Star Lists，优先复用现有列表，并且只返回有效 JSON。",
+      en: "You are an expert GitHub Star Lists organizer. Classify repositories into practical GitHub Star Lists, prefer reusing existing lists, and return only valid JSON.",
+    });
   }
 
   private createClassificationPrompt(
@@ -118,7 +143,10 @@ export class LLMClient {
         ? existingLists.map((list) => `- ${list.name}`).join("\n")
         : "(none yet)";
 
-    return `Please analyze the following GitHub repositories and classify them into meaningful GitHub Star Lists.
+    const locale = getLocaleText(this.language);
+
+    if (this.language === "en") {
+      return `Please analyze the following GitHub repositories and classify them into meaningful GitHub Star Lists.
 
 Existing GitHub Star Lists:
 ${existingListNames}
@@ -133,7 +161,48 @@ Rules:
 
 For each repository, provide:
 
-1. 一个主类别（例如："Web 开发"、"机器学习"、"DevOps"、"移动开发"、"数据科学"、"工具与实用程序"、"库与框架"、"学习资源"等）
+1. A main category (for example: ${locale.categoryExamples
+        .map((category) => `"${category}"`)
+        .join(", ")}).
+2. An optional subcategory for a more specific grouping.
+3. Relevant tags as an array of strings.
+4. A short reason for the classification.
+5. A GitHub Star List name in "listName". Reuse an existing list first; otherwise provide the new list name to create.
+
+Return a JSON array where each object has this structure:
+{
+  "repo": "owner/name",
+  "listName": "string",
+  "category": "string",
+  "subcategory": "string (optional)",
+  "tags": ["string1", "string2", ...],
+  "reason": "string"
+}
+
+Repositories to classify:
+${JSON.stringify(repoData, null, 2)}
+
+Make sure the JSON is valid and well formatted.`;
+    }
+
+    return `请分析以下 GitHub 仓库，并将它们归类到有意义的 GitHub Star Lists。
+
+现有 GitHub Star Lists：
+${existingListNames}
+
+规则：
+1. 如果现有 GitHub Star List 合理匹配，请优先复用。
+2. 如果没有合适的现有 List，请在 "listName" 中给出简洁的新 List 名称。
+3. List 名称应宽泛且实用，避免过细分类。
+4. GitHub Star Lists 有数量上限，请保持总分类数量较少。
+5. 每个仓库必须且只能分配到一个 "listName"。
+6. 只返回有效 JSON，不要包含 markdown 代码块。
+
+每个仓库请提供：
+
+1. 一个主类别（例如：${locale.categoryExamples
+      .map((category) => `"${category}"`)
+      .join("、")} 等）
 2. 一个可选的子类别用于更具体的分类
 3. 相关标签（字符串数组）
 4. 分类的简要原因
@@ -172,14 +241,23 @@ ${JSON.stringify(repoData, null, 2)}
         }
       }
 
-      // 备用方案：创建基本分类
-      console.warn("解析 LLM 响应失败，使用备用分类");
+      console.warn(
+        localize(this.language, {
+          zh: "解析 LLM 响应失败，使用备用分类",
+          en: "Failed to parse LLM response, using fallback classification",
+        })
+      );
       return repos.map((repo) =>
         this.createFallbackClassification(repo, existingLists)
       );
     } catch (error) {
-      console.error("解析 LLM 响应时出错：", error);
-      // 返回备用分类
+      console.error(
+        localize(this.language, {
+          zh: "解析 LLM 响应时出错：",
+          en: "Error parsing LLM response:",
+        }),
+        error
+      );
       return repos.map((repo) =>
         this.createFallbackClassification(repo, existingLists)
       );
@@ -206,7 +284,8 @@ ${JSON.stringify(repoData, null, 2)}
         return this.createFallbackClassification(repo, existingLists);
       }
 
-      const category = this.sanitizeText(raw.category) || this.getFallbackCategory(repo);
+      const category =
+        this.sanitizeText(raw.category) || this.getFallbackCategory(repo);
       const listName =
         this.sanitizeListName(raw.listName || raw.list || raw.githubList) ||
         this.findMatchingExistingList(category, existingLists) ||
@@ -218,7 +297,10 @@ ${JSON.stringify(repoData, null, 2)}
         tags: this.normalizeTags(raw.tags, repo),
         reason:
           this.sanitizeText(raw.reason) ||
-          `LLM 将该仓库归类到 ${listName}`,
+          localize(this.language, {
+            zh: `LLM 将该仓库归类到 ${listName}`,
+            en: `LLM classified this repository into ${listName}`,
+          }),
         listName,
       };
     });
@@ -228,6 +310,7 @@ ${JSON.stringify(repoData, null, 2)}
     repo: GitHubRepo,
     existingLists: GitHubStarList[]
   ): ClassificationResult {
+    const locale = getLocaleText(this.language);
     const category = this.getFallbackCategory(repo);
     const listName =
       this.findMatchingExistingList(category, existingLists) || category;
@@ -235,10 +318,15 @@ ${JSON.stringify(repoData, null, 2)}
     return {
       category,
       listName,
-      tags: repo.topics.length > 0 ? repo.topics : [repo.language || "未知"],
-      reason: `基于语言和主题的备用分类：${repo.language || "未知"} / ${
-        repo.topics.join(", ") || "无"
-      }`,
+      tags: repo.topics.length > 0 ? repo.topics : [repo.language || locale.unknown],
+      reason: localize(this.language, {
+        zh: `基于语言和主题的备用分类：${repo.language || locale.unknown} / ${
+          repo.topics.join(", ") || locale.none
+        }`,
+        en: `Fallback classification based on language and topics: ${
+          repo.language || locale.unknown
+        } / ${repo.topics.join(", ") || locale.none}`,
+      }),
     };
   }
 
@@ -254,7 +342,9 @@ ${JSON.stringify(repoData, null, 2)}
       }
     }
 
-    return repo.topics.length > 0 ? repo.topics : [repo.language || "未知"];
+    return repo.topics.length > 0
+      ? repo.topics
+      : [repo.language || getLocaleText(this.language).unknown];
   }
 
   private findMatchingExistingList(
@@ -283,6 +373,7 @@ ${JSON.stringify(repoData, null, 2)}
   }
 
   private getFallbackCategory(repo: GitHubRepo): string {
+    const categories = getLocaleText(this.language).categories;
     const language = repo.language?.toLowerCase();
     const description = repo.description?.toLowerCase() || "";
     const topics = repo.topics.map((t) => t.toLowerCase());
@@ -293,7 +384,7 @@ ${JSON.stringify(repoData, null, 2)}
       language === "html" ||
       language === "css"
     ) {
-      return "Web 开发";
+      return categories.web;
     }
     if (
       language === "python" &&
@@ -301,7 +392,7 @@ ${JSON.stringify(repoData, null, 2)}
         description.includes("ai") ||
         description.includes("data"))
     ) {
-      return "机器学习";
+      return categories.machineLearning;
     }
     if (
       language === "python" &&
@@ -310,7 +401,7 @@ ${JSON.stringify(repoData, null, 2)}
         description.includes("django") ||
         description.includes("flask"))
     ) {
-      return "Web 开发";
+      return categories.web;
     }
     if (
       language === "java" ||
@@ -318,7 +409,7 @@ ${JSON.stringify(repoData, null, 2)}
       language === "swift" ||
       language === "dart"
     ) {
-      return "移动开发";
+      return categories.mobile;
     }
     if (
       language === "go" ||
@@ -326,23 +417,23 @@ ${JSON.stringify(repoData, null, 2)}
       language === "c++" ||
       language === "c"
     ) {
-      return "系统编程";
+      return categories.systems;
     }
     if (
       topics.includes("docker") ||
       topics.includes("kubernetes") ||
       topics.includes("devops")
     ) {
-      return "DevOps";
+      return categories.devops;
     }
     if (
       topics.includes("learning") ||
       topics.includes("tutorial") ||
       topics.includes("course")
     ) {
-      return "学习资源";
+      return categories.learning;
     }
 
-    return "工具与实用程序";
+    return categories.tools;
   }
 }
