@@ -1,38 +1,44 @@
 {
   "name": "github-tag-organizer",
   "version": "1.0.0",
-  "description": "A TypeScript script to organize GitHub starred repositories using LLM classification",
+  "description": "LLM-powered GitHub Star Lists organizer that automatically classifies starred repositories, creates missing lists, and syncs assignments.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "npm run build && npm start",
+    "repo:metadata": "node scripts/update-repo-metadata.js",
     "clean": "rm -rf dist/",
     "prebuild": "npm run clean"
   },
   "keywords": [
     "github",
+    "github-stars",
+    "star-lists",
     "llm",
+    "ai",
     "organization",
     "typescript",
-    "ai",
-    "machine-learning",
-    "repository-management",
     "automation",
+    "repository-management",
     "starred-repos",
-    "classification"
+    "github-api",
+    "ollama",
+    "openai",
+    "productivity",
+    "developer-tools"
   ],
   "author": "Inupedia",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Inupedia/github-tag-organizer.git"
+    "url": "https://github.com/Inupedia/Github-Tag-Organizer.git"
   },
   "bugs": {
-    "url": "https://github.com/Inupedia/github-tag-organizer/issues"
+    "url": "https://github.com/Inupedia/Github-Tag-Organizer/issues"
   },
-  "homepage": "https://github.com/Inupedia/github-tag-organizer#readme",
+  "homepage": "https://github.com/Inupedia/Github-Tag-Organizer#readme",
   "engines": {
     "node": ">=16.0.0"
   },
