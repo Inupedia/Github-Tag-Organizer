@@ -1,13 +1,16 @@
 import { Octokit } from "@octokit/rest";
 import { GitHubRepo, GitHubList } from "./types";
+import { AppLanguage, localize } from "./i18n";
 
 export class GitHubClient {
   private octokit: Octokit;
+  private language: AppLanguage;
 
-  constructor(token: string) {
+  constructor(token: string, language: AppLanguage = "zh") {
     this.octokit = new Octokit({
       auth: token,
     });
+    this.language = language;
   }
 
   async getStarredRepos(username: string): Promise<GitHubRepo[]> {
@@ -61,13 +64,21 @@ export class GitHubClient {
       } catch (error: any) {
         retryCount++;
         console.error(
-          `获取星标仓库时出错（尝试 ${retryCount}/${maxRetries}）：`,
+          localize(this.language, {
+            zh: `获取星标仓库时出错（尝试 ${retryCount}/${maxRetries}）：`,
+            en: `Error fetching starred repositories (attempt ${retryCount}/${maxRetries}):`,
+          }),
           error.message
         );
 
         if (retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000; // 指数退避
-          console.log(`${delay}ms 后重试...`);
+          console.log(
+            localize(this.language, {
+              zh: `${delay}ms 后重试...`,
+              en: `Retrying in ${delay}ms...`,
+            })
+          );
           await new Promise((resolve) => setTimeout(resolve, delay));
         } else {
           throw error;
@@ -75,7 +86,12 @@ export class GitHubClient {
       }
     }
 
-    throw new Error("所有重试后仍无法获取星标仓库");
+    throw new Error(
+      localize(this.language, {
+        zh: "所有重试后仍无法获取星标仓库",
+        en: "Unable to fetch starred repositories after all retries",
+      })
+    );
   }
 
   async createList(
@@ -89,9 +105,24 @@ export class GitHubClient {
       const listId = Date.now(); // 使用时间戳作为 ID
       const createdAt = new Date().toISOString();
 
-      console.log(`📝 创建列表引用：${name}`);
-      console.log(`   描述：${description}`);
-      console.log(`   公开：${isPublic}`);
+      console.log(
+        localize(this.language, {
+          zh: `📝 创建列表引用：${name}`,
+          en: `📝 Created list reference: ${name}`,
+        })
+      );
+      console.log(
+        localize(this.language, {
+          zh: `   描述：${description}`,
+          en: `   Description: ${description}`,
+        })
+      );
+      console.log(
+        localize(this.language, {
+          zh: `   公开：${isPublic}`,
+          en: `   Public: ${isPublic}`,
+        })
+      );
       console.log(`   ID：${listId}`);
 
       return {
@@ -103,7 +134,13 @@ export class GitHubClient {
         updated_at: createdAt,
       };
     } catch (error) {
-      console.error("创建列表时出错：", error);
+      console.error(
+        localize(this.language, {
+          zh: "创建列表时出错：",
+          en: "Error creating list:",
+        }),
+        error
+      );
       throw error;
     }
   }
@@ -113,9 +150,20 @@ export class GitHubClient {
       // 注意：GitHub 没有直接添加仓库到列表的 API
       // 这是未来实现的占位符
       // 您可能需要使用 GitHub 的 GraphQL API 或创建自定义解决方案
-      console.log(`将添加 ${repoIds.length} 个仓库到列表 ${listId}`);
+      console.log(
+        localize(this.language, {
+          zh: `将添加 ${repoIds.length} 个仓库到列表 ${listId}`,
+          en: `Will add ${repoIds.length} repositories to list ${listId}`,
+        })
+      );
     } catch (error) {
-      console.error("添加仓库到列表时出错：", error);
+      console.error(
+        localize(this.language, {
+          zh: "添加仓库到列表时出错：",
+          en: "Error adding repositories to list:",
+        }),
+        error
+      );
       throw error;
     }
   }
@@ -125,7 +173,13 @@ export class GitHubClient {
       const response = await this.octokit.rest.users.getAuthenticated();
       return response.data.login;
     } catch (error) {
-      console.error("获取当前用户时出错：", error);
+      console.error(
+        localize(this.language, {
+          zh: "获取当前用户时出错：",
+          en: "Error getting current user:",
+        }),
+        error
+      );
       throw error;
     }
   }
