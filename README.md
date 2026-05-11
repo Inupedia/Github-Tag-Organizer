@@ -23,6 +23,7 @@
 - 🎯 **GitHub Lists 自动同步** - 自动读取现有 Lists，缺失时创建，并把仓库加入对应分类
 - 📊 **详细报告** - 生成完整的分类分析报告
 - 🏷️ **多级分类** - 支持主分类和子分类的层次结构
+- 🌐 **中英文模式** - 支持 `zh` / `en` 两种 CLI、LLM 提示和报告输出
 - ⚡ **批量处理** - 支持大量仓库的批量处理
 - 🔄 **重试机制** - 内置网络重试和错误处理
 
@@ -65,6 +66,9 @@ npm run build
    
    # LLM model name
    LLM_MODEL=deepseek-r1:32b
+
+   # Output language: zh or en
+   OUTPUT_LANGUAGE=zh
    
    # Maximum repositories to process (0 = all)
    MAX_REPOS=50
@@ -134,6 +138,24 @@ MAX_REPOS=100 npm run dev
 # 使用不同的 LLM 服务
 LLM_API_URL=http://your-llm-server:port
 LLM_MODEL=your-model-name
+```
+
+#### 中英文模式
+
+工具支持中文和英文两种输出模式，覆盖 CLI 日志、LLM 分类提示、备用分类名称、生成的报告和列表文件。
+
+```bash
+# 中文模式（默认）
+OUTPUT_LANGUAGE=zh npm run dev
+
+# 英文模式
+OUTPUT_LANGUAGE=en npm run dev
+```
+
+也可以在 `.env` 中配置：
+
+```env
+OUTPUT_LANGUAGE=en
 ```
 
 #### 自动同步 GitHub Star Lists
