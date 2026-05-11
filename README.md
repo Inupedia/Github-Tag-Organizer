@@ -6,6 +6,14 @@
 
 > 一个基于 TypeScript 的智能工具，使用大语言模型自动分类和整理你的 GitHub starred 仓库，并可自动创建/更新 GitHub Star Lists。
 
+<p align="center">
+  <img src="assets/demo.gif" alt="GitHub Tag Organizer 自动分类与同步演示" width="820">
+</p>
+
+<p align="center">
+  <strong>Fetch starred repos -> LLM classify -> create missing Lists -> sync back to GitHub.</strong>
+</p>
+
 ## ✨ 功能特性
 
 - 🔍 **自动获取** - 通过 GitHub API 获取所有 starred 仓库
